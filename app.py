@@ -110,7 +110,14 @@ for candidate in ["industry", "region", "sector", "отрасль", "регио�
         break
 
 # ---------------------- Sidebar filters ----------------------
-years_series = pd.to_datetime(df["year"], errors="coerce").dt.year.dropna().astype(int)
+df["year"] = pd.to_datetime(df["year"], errors="coerce").dt.year
+df = df.dropna(subset=["year"])
+df["year"] = df["year"].astype(int)
+
+years_series = df["year"]
+if years_series.empty:
+    st.error("Не удалось определить диапазон лет.")
+    st.stop()
 
 year_min, year_max = int(years_series.min()), int(years_series.max())
 
@@ -127,8 +134,8 @@ color_by = st.sidebar.selectbox(
     ["year"] + ([extra_group_col] if extra_group_col else [])
 )
 
-# Фильтрация по годам
-dff = df[(df["year"].astype("Int64") >= selected_years[0]) & (df["year"].astype("Int64") <= selected_years[1])].copy()
+# Фильтрация по выбранным годам
+dff = df[(df["year"] >= selected_years[0]) & (df["year"] <= selected_years[1])].copy()
 
 # ---------------------- Info metrics ----------------------
 st.markdown("### Фильтры")
