@@ -81,7 +81,8 @@ selected_years = st.sidebar.slider(
     min_value=year_min,
     max_value=year_max,
     value=(year_min, year_max),
-    step=1
+    step=1,
+    key="year_range_slider"
 )
 
 # Фильтр по отраслям (новый функционал)
@@ -95,22 +96,15 @@ selected_industries = None
 if industry_col:
     industries = sorted(df[industry_col].dropna().unique())
     selected_industries = st.sidebar.multiselect(
-        "Выберите отрасли", options=industries, default=industries
+        "Выберите отрасли", options=industries, default=industries, key="industry_filter"
     )
-
-# Проигрыватель годов (новый функционал)
-year_player = st.sidebar.select_slider(
-    "Год (проигрыватель)",
-    options=sorted(df["year"].unique()),
-    value=year_min
-)
 
 # Выбор раскраски (новый функционал)
 color_options = ["year"]
 if industry_col:
     color_options.append(industry_col)
 
-color_by = st.sidebar.selectbox("Цвет точек по", options=color_options)
+color_by = st.sidebar.selectbox("Цвет точек по", options=color_options, key="color_by")
 
 # ---------------------- Apply filters ----------------------
 # Базовая фильтрация по диапазону лет
@@ -119,9 +113,6 @@ dff = df[(df["year"] >= selected_years[0]) & (df["year"] <= selected_years[1])].
 # Фильтрация по отраслям (если выбраны)
 if selected_industries is not None:
     dff = dff[dff[industry_col].isin(selected_industries)]
-
-# Отдельный DataFrame для проигрывателя годов
-df_year = dff[dff["year"] == year_player]
 
 # ---------------------- Charts ----------------------
 st.markdown("### Фильтры")
@@ -133,30 +124,19 @@ c3.metric("Число наблюдений", len(dff))
 st.divider()
 
 # Chart 1: real_GVA vs real_support
-fig1 = px.scatter(
-    dff,
-    x="real_support", y="real_GVA",
-    color=color_by, hover_data=dff.columns
-)
+fig1 = px.scatter(dff, x="real_support", y="real_GVA", color=color_by, hover_data=dff.columns)
 st.plotly_chart(fig1, use_container_width=True)
 
 # Chart 2: real_GVA vs real_subsidies
-fig2 = px.scatter(
-    dff,
-    x="real_subsidies", y="real_GVA",
-    color=color_by, hover_data=dff.columns
-)
+fig2 = px.scatter(dff, x="real_subsidies", y="real_GVA", color=color_by, hover_data=dff.columns)
 st.plotly_chart(fig2, use_container_width=True)
 
 # Chart 3: Bubble
 st.subheader("Пузырьковая диаграмма")
 autoplay = st.sidebar.checkbox("Автоплей по годам", value=False, key="autoplay_checkbox")
 
-# Контейнер для проигрывателя года
-year_player_box = st.sidebar.empty()
-
 if autoplay:
-    # Если включен автоплей — показываем анимированный график, без ручного выбора года
+    # Автоматическая анимация
     fig3 = px.scatter(
         dff,
         x="real_support", y="real_subsidies",
@@ -166,12 +146,12 @@ if autoplay:
         animation_group=industry_col if industry_col else None
     )
     st.plotly_chart(fig3, use_container_width=True)
-
 else:
-    # Если автоплей выключен — отображаем select_slider для выбора года
-    year_player = year_player_box.select_slider(
+    # Ручной выбор года
+    year_player = st.sidebar.select_slider(
         "Год (проигрыватель)",
-        options=sorted(dff["year"].unique())
+        options=sorted(dff["year"].unique()),
+        key="year_player_slider"
     )
     df_year = dff[dff["year"] == year_player]
     fig3 = px.scatter(
@@ -181,7 +161,3 @@ else:
         size_max=40, hover_data=df_year.columns
     )
     st.plotly_chart(fig3, use_container_width=True)
-
-with st.expander("Показать первые строки данных"):
-    st.dataframe(dff.head(50), use_container_width=True)
-
