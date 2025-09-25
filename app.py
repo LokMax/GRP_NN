@@ -72,7 +72,12 @@ df = df.dropna(subset=["year"])
 df["year"] = df["year"].astype(int)
 
 # ---------------------- Sidebar filters ----------------------
+df["year"] = pd.to_datetime(df["year"], errors="coerce").dt.year
+df = df.dropna(subset=["year"])
+df["year"] = df["year"].astype(int)
+
 year_min, year_max = int(df["year"].min()), int(df["year"].max())
+
 selected_years = st.sidebar.slider(
     "Выберите диапазон лет",
     min_value=year_min,
