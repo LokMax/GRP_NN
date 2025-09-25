@@ -152,8 +152,15 @@ st.plotly_chart(fig2, use_container_width=True)
 st.subheader("Пузырьковая диаграмма")
 autoplay = st.sidebar.checkbox("Автоплей по годам", value=False)
 
+# Chart 3: Bubble
+st.subheader("Пузырьковая диаграмма")
+autoplay = st.sidebar.checkbox("Автоплей по годам", value=False)
+
+# Контейнер для проигрывателя года
+year_player_box = st.sidebar.empty()
+
 if autoplay:
-    # Plotly animation
+    # Если включен автоплей — показываем анимированный график, без ручного выбора года
     fig3 = px.scatter(
         dff,
         x="real_support", y="real_subsidies",
@@ -163,10 +170,12 @@ if autoplay:
         animation_group=industry_col if industry_col else None
     )
     st.plotly_chart(fig3, use_container_width=True)
+
 else:
-    # Показываем конкретный выбранный год
-    year_player = st.sidebar.select_slider(
-        "Год (проигрыватель)", options=sorted(dff["year"].unique())
+    # Если автоплей выключен — отображаем select_slider для выбора года
+    year_player = year_player_box.select_slider(
+        "Год (проигрыватель)",
+        options=sorted(dff["year"].unique())
     )
     df_year = dff[dff["year"] == year_player]
     fig3 = px.scatter(
