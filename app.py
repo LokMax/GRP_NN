@@ -110,12 +110,10 @@ for candidate in ["industry", "region", "sector", "отрасль", "регио�
         break
 
 # ---------------------- Sidebar filters ----------------------
-years_series = df["year"].dropna().astype(int)
-if years_series.empty:
-    st.error("Не удалось определить диапазон лет.")
-    st.stop()
+years_series = pd.to_datetime(df["year"], errors="coerce").dt.year.dropna().astype(int)
 
 year_min, year_max = int(years_series.min()), int(years_series.max())
+
 selected_years = st.sidebar.slider(
     "Выберите диапазон лет",
     min_value=year_min,
