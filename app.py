@@ -150,10 +150,6 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # Chart 3: Bubble
 st.subheader("Пузырьковая диаграмма")
-autoplay = st.sidebar.checkbox("Автоплей по годам", value=False)
-
-# Chart 3: Bubble
-st.subheader("Пузырьковая диаграмма")
 autoplay = st.sidebar.checkbox("Автоплей по годам", value=False, key="autoplay_checkbox")
 
 # Контейнер для проигрывателя года
