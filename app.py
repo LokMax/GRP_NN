@@ -148,14 +148,35 @@ fig2 = px.scatter(
 )
 st.plotly_chart(fig2, use_container_width=True)
 
-# Chart 3: Bubble (данные по выбранному году из проигрывателя)
-fig3 = px.scatter(
-    df_year,
-    x="real_support", y="real_subsidies",
-    size="real_GVA", color=color_by,
-    size_max=40, hover_data=df_year.columns
-)
-st.plotly_chart(fig3, use_container_width=True)
+# Chart 3: Bubble
+st.subheader("Пузырьковая диаграмма")
+autoplay = st.sidebar.checkbox("Автоплей по годам", value=False)
+
+if autoplay:
+    # Plotly animation
+    fig3 = px.scatter(
+        dff,
+        x="real_support", y="real_subsidies",
+        size="real_GVA", color=color_by,
+        size_max=40, hover_data=dff.columns,
+        animation_frame="year",
+        animation_group=industry_col if industry_col else None
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+else:
+    # Показываем конкретный выбранный год
+    year_player = st.sidebar.select_slider(
+        "Год (проигрыватель)", options=sorted(dff["year"].unique())
+    )
+    df_year = dff[dff["year"] == year_player]
+    fig3 = px.scatter(
+        df_year,
+        x="real_support", y="real_subsidies",
+        size="real_GVA", color=color_by,
+        size_max=40, hover_data=df_year.columns
+    )
+    st.plotly_chart(fig3, use_container_width=True)
 
 with st.expander("Показать первые строки данных"):
     st.dataframe(dff.head(50), use_container_width=True)
+
