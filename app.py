@@ -67,17 +67,15 @@ else:
 
 df = _ensure_year_column(df)
 ensure_required_columns(df)
-df["year"] = pd.to_numeric(df["year"], errors="coerce")
-df = df.dropna(subset=["year"])
-df["year"] = df["year"].astype(int)
 
-# ---------------------- Sidebar filters ----------------------
+# Приводим колонку year к int
 df["year"] = pd.to_datetime(df["year"], errors="coerce").dt.year
 df = df.dropna(subset=["year"])
 df["year"] = df["year"].astype(int)
 
+# ---------------------- Sidebar filters ----------------------
+# Диапазон лет (старый функционал)
 year_min, year_max = int(df["year"].min()), int(df["year"].max())
-
 selected_years = st.sidebar.slider(
     "Выберите диапазон лет",
     min_value=year_min,
@@ -86,7 +84,7 @@ selected_years = st.sidebar.slider(
     step=1
 )
 
-# Фильтр по отраслям (если колонка есть)
+# Фильтр по отраслям (новый функционал)
 industry_col = None
 for candidate in ["industry", "отрасль", "sector"]:
     if candidate in df.columns:
@@ -100,7 +98,7 @@ if industry_col:
         "Выберите отрасли", options=industries, default=industries
     )
 
-# Проигрыватель годов
+# Проигрыватель годов (новый функционал)
 year_player = st.sidebar.select_slider(
     "Год (проигрыватель)",
     options=sorted(df["year"].unique()),
@@ -108,12 +106,14 @@ year_player = st.sidebar.select_slider(
 )
 
 # ---------------------- Apply filters ----------------------
+# Базовая фильтрация по диапазону лет
 dff = df[(df["year"] >= selected_years[0]) & (df["year"] <= selected_years[1])].copy()
 
+# Фильтрация по отраслям (если выбраны)
 if selected_industries is not None:
     dff = dff[dff[industry_col].isin(selected_industries)]
 
-# Отдельный DataFrame для проигрывателя (один год)
+# Отдельный DataFrame для проигрывателя годов
 df_year = dff[dff["year"] == year_player]
 
 # ---------------------- Charts ----------------------
@@ -125,7 +125,7 @@ c3.metric("Число наблюдений", len(dff))
 
 st.divider()
 
-# Chart 1
+# Chart 1: real_GVA vs real_support
 fig1 = px.scatter(
     dff,
     x="real_support", y="real_GVA",
@@ -133,7 +133,7 @@ fig1 = px.scatter(
 )
 st.plotly_chart(fig1, use_container_width=True)
 
-# Chart 2
+# Chart 2: real_GVA vs real_subsidies
 fig2 = px.scatter(
     dff,
     x="real_subsidies", y="real_GVA",
@@ -141,7 +141,7 @@ fig2 = px.scatter(
 )
 st.plotly_chart(fig2, use_container_width=True)
 
-# Chart 3 (bubble) — динамический по выбранному году
+# Chart 3: Bubble (данные по выбранному году из проигрывателя)
 fig3 = px.scatter(
     df_year,
     x="real_support", y="real_subsidies",
