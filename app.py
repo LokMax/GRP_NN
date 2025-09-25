@@ -105,6 +105,13 @@ year_player = st.sidebar.select_slider(
     value=year_min
 )
 
+# Выбор раскраски (новый функционал)
+color_options = ["year"]
+if industry_col:
+    color_options.append(industry_col)
+
+color_by = st.sidebar.selectbox("Цвет точек по", options=color_options)
+
 # ---------------------- Apply filters ----------------------
 # Базовая фильтрация по диапазону лет
 dff = df[(df["year"] >= selected_years[0]) & (df["year"] <= selected_years[1])].copy()
@@ -129,7 +136,7 @@ st.divider()
 fig1 = px.scatter(
     dff,
     x="real_support", y="real_GVA",
-    color="year", hover_data=dff.columns
+    color=color_by, hover_data=dff.columns
 )
 st.plotly_chart(fig1, use_container_width=True)
 
@@ -137,7 +144,7 @@ st.plotly_chart(fig1, use_container_width=True)
 fig2 = px.scatter(
     dff,
     x="real_subsidies", y="real_GVA",
-    color="year", hover_data=dff.columns
+    color=color_by, hover_data=dff.columns
 )
 st.plotly_chart(fig2, use_container_width=True)
 
@@ -145,7 +152,7 @@ st.plotly_chart(fig2, use_container_width=True)
 fig3 = px.scatter(
     df_year,
     x="real_support", y="real_subsidies",
-    size="real_GVA", color="year",
+    size="real_GVA", color=color_by,
     size_max=40, hover_data=df_year.columns
 )
 st.plotly_chart(fig3, use_container_width=True)
