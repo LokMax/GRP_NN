@@ -19,55 +19,35 @@ st.caption("Интерактивные диаграммы по данным из
 REQUIRED_COLS = ["real_GVA", "real_support", "real_subsidies"]
 
 def _ensure_year_column(df: pd.DataFrame) -> pd.DataFrame:
-    """Убедиться, что есть колонка 'year' (или 'год', или извлечь из 'date')."""
     cols_lower = {c.lower(): c for c in df.columns}
-
     if "year" in cols_lower:
-        c = cols_lower["year"]
-        df["year"] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
+        df["year"] = pd.to_numeric(df[cols_lower["year"]], errors="coerce")
         return df
-
     if "год" in cols_lower:
-        c = cols_lower["год"]
-        df["year"] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
+        df["year"] = pd.to_numeric(df[cols_lower["год"]], errors="coerce")
         return df
-
     if "date" in cols_lower:
-        c = cols_lower["date"]
-        tmp = pd.to_datetime(df[c], errors="coerce")
-        df["year"] = tmp.dt.year.astype("Int64")
+        df["year"] = pd.to_datetime(df[cols_lower["date"]], errors="coerce").dt.year
         return df
-
     for col in df.columns:
-        cl = col.lower()
-        if "year" in cl or "год" in cl:
-            df["year"] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+        if "year" in col.lower() or "год" in col.lower():
+            df["year"] = pd.to_numeric(df[col], errors="coerce")
             return df
-
-    raise ValueError("Не найдена колонка с годом. Добавьте колонку 'year', 'год' или 'date'.")
+    raise ValueError("Не найдена колонка с годом")
 
 @st.cache_data(show_spinner=False)
 def load_excel(content_or_path, sheet_name: str = "Данные") -> pd.DataFrame:
-    """Загрузить Excel из файла или байтов."""
     if isinstance(content_or_path, (bytes, bytearray)):
-        bio = io.BytesIO(content_or_path)
-        df = pd.read_excel(bio, sheet_name=sheet_name, engine="openpyxl")
-    elif isinstance(content_or_path, io.BytesIO):
-        df = pd.read_excel(content_or_path, sheet_name=sheet_name, engine="openpyxl")
-    else:
-        df = pd.read_excel(content_or_path, sheet_name=sheet_name, engine="openpyxl")
-    return df
+        return pd.read_excel(io.BytesIO(content_or_path), sheet_name=sheet_name, engine="openpyxl")
+    if isinstance(content_or_path, io.BytesIO):
+        return pd.read_excel(content_or_path, sheet_name=sheet_name, engine="openpyxl")
+    return pd.read_excel(content_or_path, sheet_name=sheet_name, engine="openpyxl")
 
 def ensure_required_columns(df: pd.DataFrame):
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
         st.error(f"В данных отсутствуют обязательные колонки: {', '.join(missing)}")
         st.stop()
-
-def coerce_numeric(df: pd.DataFrame, cols):
-    for c in cols:
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
 
 # ---------------------- Data input ----------------------
 st.sidebar.header("Данные")
@@ -76,51 +56,23 @@ uploaded = st.sidebar.file_uploader("Загрузите Excel-файл (.xlsx)",
 default_path = Path("Data.xlsx")
 
 df = None
-
 if uploaded is not None:
-    try:
-        df = load_excel(uploaded.getvalue(), sheet_name=sheet_name)
-    except Exception as e:
-        st.error(f"Не удалось прочитать загруженный файл: {e}")
+    df = load_excel(uploaded.getvalue(), sheet_name=sheet_name)
 elif default_path.exists():
-    try:
-        df = load_excel(default_path, sheet_name=sheet_name)
-        st.sidebar.info("Используется локальный файл Data.xlsx из корня репозитория.")
-    except Exception as e:
-        st.error(f"Не удалось прочитать файл Data.xlsx: {e}")
+    df = load_excel(default_path, sheet_name=sheet_name)
+    st.sidebar.info("Используется локальный файл Data.xlsx")
 else:
-    st.warning("Загрузите файл Excel (слева) или поместите 'Data.xlsx' в корень репозитория.")
+    st.warning("Загрузите файл Excel или поместите Data.xlsx в корень репозитория")
     st.stop()
 
-# Обработка колонок
-try:
-    df = _ensure_year_column(df)
-except ValueError as e:
-    st.error(str(e))
-    st.stop()
-
+df = _ensure_year_column(df)
 ensure_required_columns(df)
-df = coerce_numeric(df, REQUIRED_COLS + ["year"])
-
-# Опциональная дополнительная категоризация (например, industry)
-extra_group_col = None
-for candidate in ["industry", "region", "sector", "отрасль", "регион"]:
-    if candidate in df.columns:
-        extra_group_col = candidate
-        break
-
-# ---------------------- Sidebar filters ----------------------
-df["year"] = pd.to_datetime(df["year"], errors="coerce").dt.year
+df["year"] = pd.to_numeric(df["year"], errors="coerce")
 df = df.dropna(subset=["year"])
 df["year"] = df["year"].astype(int)
 
-years_series = df["year"]
-if years_series.empty:
-    st.error("Не удалось определить диапазон лет.")
-    st.stop()
-
-year_min, year_max = int(years_series.min()), int(years_series.max())
-
+# ---------------------- Sidebar filters ----------------------
+year_min, year_max = int(df["year"].min()), int(df["year"].max())
 selected_years = st.sidebar.slider(
     "Выберите диапазон лет",
     min_value=year_min,
@@ -129,78 +81,69 @@ selected_years = st.sidebar.slider(
     step=1
 )
 
-color_by = st.sidebar.selectbox(
-    "Цвет точек по",
-    ["year"] + ([extra_group_col] if extra_group_col else [])
+# Фильтр по отраслям (если колонка есть)
+industry_col = None
+for candidate in ["industry", "отрасль", "sector"]:
+    if candidate in df.columns:
+        industry_col = candidate
+        break
+
+selected_industries = None
+if industry_col:
+    industries = sorted(df[industry_col].dropna().unique())
+    selected_industries = st.sidebar.multiselect(
+        "Выберите отрасли", options=industries, default=industries
+    )
+
+# Проигрыватель годов
+year_player = st.sidebar.select_slider(
+    "Год (проигрыватель)",
+    options=sorted(df["year"].unique()),
+    value=year_min
 )
 
-# Фильтрация по выбранным годам
+# ---------------------- Apply filters ----------------------
 dff = df[(df["year"] >= selected_years[0]) & (df["year"] <= selected_years[1])].copy()
 
-# ---------------------- Info metrics ----------------------
+if selected_industries is not None:
+    dff = dff[dff[industry_col].isin(selected_industries)]
+
+# Отдельный DataFrame для проигрывателя (один год)
+df_year = dff[dff["year"] == year_player]
+
+# ---------------------- Charts ----------------------
 st.markdown("### Фильтры")
-col1, col2, col3 = st.columns([1,1,1])
-with col1:
-    st.metric("Мин. год", selected_years[0])
-with col2:
-    st.metric("Макс. год", selected_years[1])
-with col3:
-    st.metric("Число наблюдений", len(dff))
+c1, c2, c3 = st.columns(3)
+c1.metric("Мин. год", selected_years[0])
+c2.metric("Макс. год", selected_years[1])
+c3.metric("Число наблюдений", len(dff))
 
 st.divider()
 
-# ---------------------- Chart 1: real_GVA vs real_support ----------------------
+# Chart 1
 fig1 = px.scatter(
     dff,
-    x="real_support",
-    y="real_GVA",
-    color=color_by,
-    hover_data=dff.columns
-)
-fig1.update_layout(
-    title="Диаграмма рассеяния: real_GVA vs real_support",
-    xaxis_title="real_support",
-    yaxis_title="real_GVA",
-    legend_title=color_by
+    x="real_support", y="real_GVA",
+    color="year", hover_data=dff.columns
 )
 st.plotly_chart(fig1, use_container_width=True)
 
-# ---------------------- Chart 2: real_GVA vs real_subsidies ----------------------
+# Chart 2
 fig2 = px.scatter(
     dff,
-    x="real_subsidies",
-    y="real_GVA",
-    color=color_by,
-    hover_data=dff.columns
-)
-fig2.update_layout(
-    title="Диаграмма рассеяния: real_GVA vs real_subsidies",
-    xaxis_title="real_subsidies",
-    yaxis_title="real_GVA",
-    legend_title=color_by
+    x="real_subsidies", y="real_GVA",
+    color="year", hover_data=dff.columns
 )
 st.plotly_chart(fig2, use_container_width=True)
 
-# ---------------------- Chart 3: Bubble ----------------------
+# Chart 3 (bubble) — динамический по выбранному году
 fig3 = px.scatter(
-    dff,
-    x="real_support",
-    y="real_subsidies",
-    size="real_GVA",
-    color=color_by,
-    size_max=40,
-    hover_data=dff.columns
-)
-fig3.update_layout(
-    title="Пузырьковая диаграмма: real_support vs real_subsidies (размер = real_GVA)",
-    xaxis_title="real_support",
-    yaxis_title="real_subsidies",
-    legend_title=color_by
+    df_year,
+    x="real_support", y="real_subsidies",
+    size="real_GVA", color="year",
+    size_max=40, hover_data=df_year.columns
 )
 st.plotly_chart(fig3, use_container_width=True)
 
-# ---------------------- Data preview ----------------------
 with st.expander("Показать первые строки данных"):
     st.dataframe(dff.head(50), use_container_width=True)
-
-st.caption("Разместите файл 'Data.xlsx' в корень репозитория или загрузите его через сайдбар.")
