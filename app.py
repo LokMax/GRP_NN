@@ -154,7 +154,7 @@ autoplay = st.sidebar.checkbox("Автоплей по годам", value=False)
 
 # Chart 3: Bubble
 st.subheader("Пузырьковая диаграмма")
-autoplay = st.sidebar.checkbox("Автоплей по годам", value=False)
+autoplay = st.sidebar.checkbox("Автоплей по годам", value=False, key="autoplay_checkbox")
 
 # Контейнер для проигрывателя года
 year_player_box = st.sidebar.empty()
